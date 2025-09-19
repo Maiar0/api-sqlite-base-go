@@ -1,0 +1,245 @@
+<!-- Use Courier New for all code in this file -->
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>CORS Test Harness</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        }
+
+        h1,
+        h2 {
+            margin: 0.4rem 0;
+        }
+
+        .row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 0.5rem 0;
+        }
+
+        fieldset {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 0.8rem;
+            min-width: 280px;
+        }
+
+        label {
+            display: block;
+            margin: 0.2rem 0;
+        }
+
+        input[type="text"] {
+            width: 100%;
+        }
+
+        button {
+            cursor: pointer;
+            padding: 0.4rem 0.8rem;
+        }
+
+        pre,
+        code,
+        textarea {
+            font-family: "Courier New", Courier, monospace;
+        }
+
+        pre {
+            background: #111;
+            color: #ddd;
+            padding: 0.8rem;
+            border-radius: 6px;
+            overflow: auto;
+            max-height: 40vh;
+        }
+
+        .ok {
+            color: #6de06d;
+        }
+
+        .bad {
+            color: #ff8a8a;
+        }
+
+        .muted {
+            opacity: 0.85;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>CORS Test Harness</h1>
+    <p class="muted">
+        Frontend origin: <strong id="origin"></strong> — Requests target: <strong id="target"></strong>
+    </p>
+
+    <div class="row">
+        <fieldset>
+            <legend>Settings</legend>
+            <label>
+                Target URL
+                <input id="url" type="text" value="http://localhost:3000/api/data" />
+            </label>
+            <label>
+                Custom Header (triggers preflight)
+                <input id="xheader" type="text" value="X-Api-Key: demo123" />
+            </label>
+            <label>
+                Credentials (cookies/auth):
+                <input id="creds" type="checkbox" /> Send with credentials
+            </label>
+            <label class="muted">
+                Content-Type for POST:
+                <input id="ctype" type="text" value="application/json" />
+            </label>
+        </fieldset>
+
+        <fieldset>
+            <legend>Actions</legend>
+            <div class="row">
+                <button id="btn-get">Simple GET</button>
+                <button id="btn-post">POST (JSON)</button>
+                <button id="btn-post-hdr">POST + Custom Header</button>
+                <button id="btn-preflight">Manual Preflight (OPTIONS)</button>
+            </div>
+            <div class="row">
+                <button id="btn-clear">Clear Output</button>
+            </div>
+        </fieldset>
+    </div>
+
+    <h2>Output</h2>
+    <pre id="out"></pre>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const out = $("out");
+
+        function log(line = "", cls = "") {
+            const prefix = cls === "ok" ? "✔ " : cls === "bad" ? "✖ " : "";
+            out.textContent += prefix + line + "\n";
+            out.scrollTop = out.scrollHeight;
+        }
+
+        function logSection(title) {
+            log("\n=== " + title + " ===");
+        }
+
+        function parseCustomHeader(input) {
+            // "X-Api-Key: demo123" -> ["X-Api-Key", "demo123"]
+            const idx = input.indexOf(":");
+            if (idx === -1) return null;
+            const name = input.slice(0, idx).trim();
+            const value = input.slice(idx + 1).trim();
+            if (!name) return null;
+            return [name, value];
+        }
+
+        function getFetchOpts(method, withBody, includeCustomHeader) {
+            const creds = $("creds").checked ? "include" : "omit";
+            const headers = {};
+            const ctype = $("ctype").value.trim();
+            if (withBody && ctype) headers["Content-Type"] = ctype;
+
+            if (includeCustomHeader) {
+                const pair = parseCustomHeader($("xheader").value);
+                if (pair) headers[pair[0]] = pair[1];
+            }
+
+            const opts = { method, credentials: creds, headers };
+
+            if (withBody) {
+                if (ctype === "application/json") {
+                    opts.body = JSON.stringify({ ping: "pong", when: new Date().toISOString() });
+                } else if (ctype === "text/plain") {
+                    opts.body = "hello";
+                } else {
+                    opts.body = JSON.stringify({ note: "body set, unrecognized Content-Type" });
+                }
+            }
+            return opts;
+        }
+
+        async function doFetch(title, method, withBody = false, includeCustomHeader = false) {
+            const url = $("url").value.trim();
+            logSection(title + " -> " + method + " " + url);
+
+            const opts = getFetchOpts(method, withBody, includeCustomHeader);
+            log("Request options:");
+            log(JSON.stringify({ ...opts, body: withBody ? opts.body : undefined }, null, 2));
+
+            try {
+                const res = await fetch(url, opts);
+
+                log("Status: " + res.status + " " + res.statusText, res.ok ? "ok" : "bad");
+
+                log("Response headers:");
+                const hdrs = {};
+                res.headers.forEach((v, k) => { hdrs[k] = v; });
+                log(JSON.stringify(hdrs, null, 2));
+
+                // Attempt to read body (may fail on opaque/cors errors)
+                try {
+                    const txt = await res.text();
+                    log("Body:");
+                    log(txt || "(empty)");
+                } catch (e) {
+                    log("Body read error: " + String(e), "bad");
+                }
+            } catch (e) {
+                log("Network/Fetch error: " + String(e), "bad");
+            }
+        }
+
+        // Manual preflight (OPTIONS). Note: fetch disallows setting certain forbidden headers,
+        // but this will still trigger the server's CORS middleware.
+        async function doPreflight() {
+            const url = $("url").value.trim();
+            const pair = parseCustomHeader($("xheader").value);
+            logSection("Manual Preflight -> OPTIONS " + url);
+
+            const headers = new Headers();
+            headers.set("Origin", location.origin); // fetch sets this automatically; included for clarity
+            headers.set("Access-Control-Request-Method", "POST");
+            if (pair) headers.set("Access-Control-Request-Headers", pair[0] + ", Content-Type");
+
+            try {
+                const res = await fetch(url, { method: "OPTIONS", headers });
+                log("Status: " + res.status + " " + res.statusText, res.ok ? "ok" : "bad");
+                const hdrs = {};
+                res.headers.forEach((v, k) => { hdrs[k] = v; });
+                log("Response headers:");
+                log(JSON.stringify(hdrs, null, 2));
+                log("(No body expected for preflight)");
+            } catch (e) {
+                log("Preflight error: " + String(e), "bad");
+            }
+        }
+
+        // Wire up UI
+        $("btn-get").addEventListener("click", () => doFetch("Simple GET", "GET"));
+        $("btn-post").addEventListener("click", () => doFetch("POST JSON", "POST", true));
+        $("btn-post-hdr").addEventListener("click", () => doFetch("POST + Custom Header", "POST", true, true));
+        $("btn-preflight").addEventListener("click", () => doPreflight());
+        $("btn-clear").addEventListener("click", () => { out.textContent = ""; });
+
+        // Display context
+        $("origin").textContent = location.origin || "(file:// — not recommended)";
+        $("target").textContent = $("url").value;
+
+        // Warn if loaded from file:// because Origin will be "null"
+        if (location.origin === "null" || location.protocol === "file:") {
+            log("Warning: You opened this page via file://", "bad");
+            log("Browsers send Origin: null for file:// which most servers reject.", "bad");
+            log("Serve this file from http://localhost:<port>, e.g. `python -m http.server 5173`.", "bad");
+        }
+    </script>
+</body>
+
+</html>

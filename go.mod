@@ -4,6 +4,4 @@ go 1.24
 
 toolchain go1.24.5
 
-require (
-	
-)
+require github.com/rs/cors v1.11.1
