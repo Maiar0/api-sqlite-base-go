@@ -47,7 +47,10 @@ func simpleLogger(next http.Handler) http.Handler {
 func corsMiddleware(mux http.Handler) http.Handler {
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"https://app.example.com", "http://localhost:5000"},
+		AllowedOrigins: []string{
+			"https://app.example.com",
+			"http://localhost:5000",
+			"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		ExposedHeaders:   []string{"X-Total-Count"},

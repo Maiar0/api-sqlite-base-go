@@ -12,5 +12,7 @@ func main() {
 		w.Write([]byte(`{"ok":true}`))
 	})
 
+	mux.HandleFunc("/ws/echo", server.HandleEchoWS)
+
 	server.Run(mux, ":3000")
 }
