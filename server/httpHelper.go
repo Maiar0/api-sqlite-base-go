@@ -13,13 +13,13 @@ type APIError struct {
 
 // WriteJSONError writes a JSON error response with the given HTTP status code and error message.
 // It automatically logs the error and sets the appropriate Content-Type header.
-func WriteJSONError(w http.ResponseWriter, code int, msg string) {
+func WriteJSONError(w http.ResponseWriter, code int, msg string) error {
 	log.Printf("[API Error] %d: %s", code, msg)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
-	_ = json.NewEncoder(w).Encode(APIError{Error: msg}) //TODO:: needs to return error
+	return json.NewEncoder(w).Encode(APIError{Error: msg}) // return the error from Encode for further handling if needed
 
 }
 
