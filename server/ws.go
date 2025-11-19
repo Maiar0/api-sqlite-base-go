@@ -19,9 +19,9 @@ var wsUpgrader = websocket.Upgrader{
 }
 
 type Message struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data,omitempty"`
-	Err  string      `json:"err,omitempty"`
+	Action string      `json:"action,omitempty"`
+	Data   interface{} `json:"data,omitempty"`
+	Err    string      `json:"err,omitempty"`
 }
 
 type Client struct {
@@ -31,33 +31,39 @@ type Client struct {
 
 var clients = make(map[string]*Client)
 
-func reader(conn *websocket.Conn, target any) error {
+func reader(conn *websocket.Conn) error {
 	for {
 		msgType, msg, err := conn.ReadMessage()
 		if err != nil {
 			log.Printf("[WS] Read error: %v", err)
 			return err
 		}
-		if err := json.Unmarshal(msg, target); err != nil {
+		var m Message
+		if err := json.Unmarshal(msg, &m); err != nil {
 			log.Printf("[WS] Unmarshal error: %v", err)
-			return err
+			Send(conn, Message{}, err, msgType)
+			continue
 		}
 		//add client to list
 		//echo message back to client
-		respond(conn, msgType, target, nil)
+		Send(conn, m, nil, msgType)
 	}
 }
 
-func respond(conn *websocket.Conn, msgType int, data interface{}, errMsg error) {
-	m := Message{
-		Data: data,
-	}
+func Send(conn *websocket.Conn, m Message, errMsg error, msgType int) {
 	if errMsg != nil {
 		m.Err = errMsg.Error()
 	}
 
-	out, _ := json.Marshal(m) //ignoring error for now
-	conn.WriteMessage(msgType, out)
+	out, err := json.Marshal(m)
+	if err != nil {
+		log.Printf("[WS] Marshal error: %v", err)
+		return
+	}
+
+	if err := conn.WriteMessage(msgType, out); err != nil {
+		log.Printf("[WS] Write error: %v", err)
+	}
 }
 
 func HandleEchoWS(w http.ResponseWriter, r *http.Request) {
@@ -67,8 +73,8 @@ func HandleEchoWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 	log.Printf("[WS]client conected from %s", r.RemoteAddr)
-	var m Message
-	reader(conn, &m)
+
+	reader(conn)
 
 	log.Printf("[WS] client disconnected from %s", r.RemoteAddr)
 }
