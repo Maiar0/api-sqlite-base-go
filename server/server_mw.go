@@ -49,8 +49,7 @@ func corsMiddleware(mux http.Handler) http.Handler {
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{
 			"https://app.example.com",
-			"http://localhost:5000",
-			"*"},
+			"http://localhost:5173", "*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		ExposedHeaders:   []string{"X-Total-Count"},
