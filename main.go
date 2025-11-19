@@ -12,6 +12,10 @@ func main() {
 		w.Write([]byte(`{"ok":true}`))
 	})
 
+	// Serve files inside ./tests/ under /tests/
+	fileServer := http.FileServer(http.Dir("./tests"))
+	mux.Handle("/tests/", http.StripPrefix("/tests/", fileServer))
+
 	mux.HandleFunc("/ws/echo", server.HandleEchoWS)
 
 	server.Run(mux, ":3000")
