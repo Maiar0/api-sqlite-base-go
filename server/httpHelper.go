@@ -14,7 +14,7 @@ type APIError struct {
 // WriteJSONError writes a JSON error response with the given HTTP status code and error message.
 // It automatically logs the error and sets the appropriate Content-Type header.
 func WriteJSONError(w http.ResponseWriter, code int, msg string) error {
-	log.Printf("[API Error] %d: %s", code, msg)
+	log.Printf("[WriteJSONError] %d: %s", code, msg)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)

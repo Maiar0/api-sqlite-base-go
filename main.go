@@ -3,7 +3,8 @@ package main
 import (
 	"net/http"
 
-	server "github.com/Maiar0/api-sqlite-base-go/server"
+	"github.com/Maiar0/api-sqlite-base-go/auth"
+	"github.com/Maiar0/api-sqlite-base-go/server"
 )
 
 func main() {
@@ -11,7 +12,7 @@ func main() {
 	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"ok":true}`))
 	})
-
+	auth.Register(mux)
 	// Serve files inside ./tests/ under /tests/
 	fileServer := http.FileServer(http.Dir("./tests"))
 	mux.Handle("/tests/", http.StripPrefix("/tests/", fileServer))

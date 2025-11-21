@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background: #2b2b2b;
+            padding: 24px 28px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            width: 320px;
+        }
+
+        .login-container h2 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 4px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background: #1a1a1a;
+            color: #f0f0f0;
+            font-family: Courier New, monospace;
+        }
+
+        button {
+            margin-top: 14px;
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: none;
+            background: #4a90e2;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: Courier New, monospace;
+        }
+
+        button:disabled {
+            background: #777;
+            cursor: default;
+        }
+
+        .message {
+            margin-top: 10px;
+            min-height: 20px;
+            font-size: 13px;
+            font-family: Courier New, monospace;
+            white-space: pre-wrap;
+        }
+
+        .message.error {
+            color: #ff8080;
+        }
+
+        .message.success {
+            color: #80ff80;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-container">
+        <h2>Login</h2>
+        <form id="login-form">
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" autocomplete="username" required>
+
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+            <button type="submit" id="login-button">Login</button>
+            <div id="message" class="message"></div>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById("login-form");
+        const messageEl = document.getElementById("message");
+        const button = document.getElementById("login-button");
+
+        function setMessage(text, isError) {
+            messageEl.textContent = text;
+            messageEl.classList.toggle("error", !!isError);
+            messageEl.classList.toggle("success", !isError && !!text);
+        }
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            setMessage("", false);
+            button.disabled = true;
+
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value;
+
+            try {
+                const resp = await fetch("/auth/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const text = await resp.text();
+                let data;
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (err) {
+                    data = {};
+                }
+
+                if (!resp.ok) {
+                    const errMsg = (data && data.error) || resp.statusText || "Login failed";
+                    setMessage("Error: " + errMsg, true);
+                } else {
+                    // Expecting something like { token: "jwt..." } or { accessToken: "..." }
+                    const token = data.token || data.accessToken || null;
+                    if (token) {
+                        localStorage.setItem("authToken", token);
+                        setMessage("Login successful.\nToken stored in localStorage.", false);
+                    } else {
+                        setMessage("Login successful, but no token in response.", false);
+                    }
+                }
+            } catch (err) {
+                setMessage("Network error: " + err.message, true);
+            } finally {
+                button.disabled = false;
+            }
+        });
+    </script>
+
+</body>
+
+</html>

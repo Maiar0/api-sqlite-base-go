@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Register User</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .register-container {
+            background: #2b2b2b;
+            padding: 24px 28px;
+            border-radius: 8px;
+            width: 340px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        input,
+        button {
+            font-family: Courier New, monospace;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 7px;
+            margin-top: 4px;
+            margin-bottom: 10px;
+            background: #111;
+            color: #eee;
+            border: 1px solid #555;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #4a90e2;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .message {
+            margin-top: 12px;
+            font-size: 13px;
+            white-space: pre-wrap;
+            font-family: Courier New, monospace;
+        }
+
+        .message.error {
+            color: #ff8080;
+        }
+
+        .message.success {
+            color: #80ff80;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="register-container">
+        <h2>Register</h2>
+        <form id="register-form">
+            <label>Username</label>
+            <input id="username" type="text" required>
+
+            <label>Email</label>
+            <input id="email" type="email" required>
+
+            <label>Password</label>
+            <input id="password" type="password" required>
+
+            <button id="register-button" type="submit">Create Account</button>
+            <div id="message" class="message"></div>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById("register-form");
+        const messageEl = document.getElementById("message");
+        const button = document.getElementById("register-button");
+
+        function setMessage(text, isError) {
+            messageEl.textContent = text;
+            messageEl.classList.toggle("error", !!isError);
+            messageEl.classList.toggle("success", !isError && !!text);
+        }
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            setMessage("");
+            button.disabled = true;
+
+            const payload = {
+                username: document.getElementById("username").value.trim(),
+                email: document.getElementById("email").value.trim(),
+                password: document.getElementById("password").value
+            };
+
+            try {
+                const resp = await fetch("/auth/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const text = await resp.text();
+                let data = {};
+
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (e) { }
+
+                if (!resp.ok) {
+                    const errMsg = data.error || resp.statusText || "Registration failed";
+                    setMessage("Error: " + errMsg, true);
+                } else {
+                    setMessage("Registration successful.\nYou may now login.", false);
+                }
+
+            } catch (err) {
+                setMessage("Network error: " + err.message, true);
+            } finally {
+                button.disabled = false;
+            }
+        });
+    </script>
+
+</body>
+
+</html>
