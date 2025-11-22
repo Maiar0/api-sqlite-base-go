@@ -104,7 +104,7 @@ func (u *Store) NewUser(user string, email string, password string) (sql.Result,
 
 type Row struct {
 	ID           int
-	UUID         string
+	uuid         string
 	username     string
 	email        string
 	passwordHash string
@@ -124,7 +124,7 @@ func (u *Store) GetUserByUsername(username string) (*Row, error) {
 
 	var user Row
 	err := row.Scan(
-		&user.ID, &user.UUID, &user.username,
+		&user.ID, &user.uuid, &user.username,
 		&user.email, &user.passwordHash, &user.created_at,
 		&user.updated_at, &user.isActive, &user.lastLogin)
 	if err != nil {

@@ -3,6 +3,7 @@ package auth
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Maiar0/api-sqlite-base-go/server"
 	"golang.org/x/crypto/bcrypt"
@@ -17,6 +18,10 @@ func Register(mux *http.ServeMux) {
 type loginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+type loginResponse struct {
+	TokenStr string `json:"token"`
+	Message  string `json:"message,omitempty"`
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +53,12 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//response
-	server.WriteJSONResponse(w, http.StatusOK, map[string]string{"message": "Login successful"})
+	token, err := GenerateJWT(user.uuid, user.username, user.email, 24*time.Hour)
+	if err != nil {
+		server.WriteJSONError(w, http.StatusInternalServerError, "Error generating token")
+		return
+	}
+	server.WriteJSONResponse(w, http.StatusCreated, loginResponse{TokenStr: token, Message: "Login successful"})
 
 }
 

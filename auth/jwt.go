@@ -22,14 +22,16 @@ func InitJWTSecret() { //must be instillized at app start
 type Claims struct {
 	UserUUID string `json:"uuid"`
 	Username string `json:"username"`
+	Email    string `json:"email"`
 	jwt.RegisteredClaims
 }
 
-func GenerateJWT(userUUID string, userName string, ttl time.Duration) (string, error) {
+func GenerateJWT(userUUID string, userName string, email string, ttl time.Duration) (string, error) {
 	now := time.Now().UTC()
 	claims := Claims{
 		UserUUID: userUUID,
 		Username: userName,
+		Email:    email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userUUID,
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -45,19 +47,23 @@ func GenerateJWT(userUUID string, userName string, ttl time.Duration) (string, e
 }
 
 func ParseJWT(tokenStr string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &UserClaims{}, funct(t *jwt.Token)(interface{}, error){
-		//Enforce HMAC SHA-256
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+	claims := &Claims{}
+	//check that the algorithm in the token matches what we expect
+	keyFunc := func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
 		}
+		//return the secret key that veriifies signature
 		return jwtSecret, nil
-	})
-	if err != nil{
+	}
+	//decode and verify the token
+	token, err := jwt.ParseWithClaims(tokenStr, claims, keyFunc)
+	if err != nil {
 		return nil, err
 	}
-	 claims, ok := token.Claims.(*UserClaims)
-	 if !ok || !token.Valid{
-		return nil, jwt.ErrInvalidKey
-	 }
-	 return claims, nil
+	if !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+	return claims, nil
+
 }
