@@ -6,10 +6,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -26,11 +26,13 @@ var userStore *Store
 
 func GetUserStore() (*Store, error) {
 	if userStore == nil {
-		err := InitUserDB()
+		log.Printf("[store.go] userStore == nil")
+		store, err := InitUserDB()
 		if err != nil {
-			log.Printf("[store.go] Error getting user DB %e", err)
+			log.Printf("[store.go] Error getting user DB %v", err)
 			return nil, err
 		}
+		userStore = store
 	}
 
 	return userStore, nil
@@ -46,10 +48,11 @@ func CloseUserDB() error {
 	return err
 }
 
-func InitUserDB() error {
+func InitUserDB() (*Store, error) {
 	// Ensure baseDir exists
 	if err := os.MkdirAll(baseDir, 0755); err != nil {
-		return fmt.Errorf("creating base dir %q: %w", baseDir, err)
+		log.Printf("[store.go] Error creating base dir: %q", err.Error())
+		return nil, fmt.Errorf("creating base dir %q: %w", baseDir, err)
 	}
 
 	dbPath := filepath.Join(baseDir, dbFileName)
@@ -57,38 +60,39 @@ func InitUserDB() error {
 	// Open (or create) the SQLite DB file
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		return fmt.Errorf("opening db %q: %w", dbPath, err)
+		log.Printf("[store.go] Error creating/opening db: %q", err.Error())
+		return nil, fmt.Errorf("opening db %q: %w", dbPath, err)
 	}
 
 	// If anything fails after this, close db before returning
 	schemaBytes, err := os.ReadFile(schemaPath)
 	if err != nil {
 		db.Close()
-		return fmt.Errorf("reading schema file %q: %w", schemaPath, err)
+		return nil, fmt.Errorf("reading schema file %q: %w", schemaPath, err)
 	}
 
 	if _, err := db.Exec(string(schemaBytes)); err != nil {
 		db.Close()
-		return fmt.Errorf("executing schema from %q: %w", schemaPath, err)
+		return nil, fmt.Errorf("executing schema from %q: %w", schemaPath, err)
 	}
-
-	userStore := &Store{db: db}
-	_ = userStore // to avoid unused variable warning
 
 	log.Printf("[store.go] User DB initialized successfully at %s", dbPath)
 
-	return nil
+	return &Store{db: db}, nil
 }
 
 func (u *Store) NewUser(user string, email string, password string) (sql.Result, error) {
 	log.Printf("[store.go] NewUser called for user: %s, email: %s", user, email)
-	now := time.Now().UTC().Format(time.RFC3339)
 	userUUID := uuid.NewString()
-
+	password_hash, err := HashPassword(password) // TODO: hash the password before storing
+	if err != nil {
+		log.Printf("[store.go] Error hashing password: %v", err)
+		return nil, err
+	}
 	result, err := u.db.Exec(`
-	INSERT INTO users (userUUID, username, email, password) 
-	VALUES (?, ?, ?, ?, ?)
-	`, userUUID, user, email, password, now)
+	INSERT INTO users (uuid, username, email, password_hash) 
+	VALUES (?, ?, ?, ?)
+	`, userUUID, user, email, password_hash)
 	if err != nil {
 		log.Printf("[store.go] Error inserting new user: %v", err)
 	}
@@ -96,4 +100,46 @@ func (u *Store) NewUser(user string, email string, password string) (sql.Result,
 	log.Printf("[store.go] New user inserted with ID: %d", insertID)
 
 	return result, err
+}
+
+type Row struct {
+	ID           int
+	UUID         string
+	username     string
+	email        string
+	passwordHash string
+	created_at   string
+	updated_at   string
+	isActive     bool
+	lastLogin    string
+}
+
+func (u *Store) GetUserByUsername(username string) (*Row, error) {
+	log.Printf("[store.go] GetUserByUsername called for username: %s", username)
+	row := u.db.QueryRow(`
+	SELECT id, uuid, username, email, password_hash, created_at, updated_at, is_active, last_login_at 
+	FROM users 
+	WHERE username = ?
+	`, username)
+
+	var user Row
+	err := row.Scan(
+		&user.ID, &user.UUID, &user.username,
+		&user.email, &user.passwordHash, &user.created_at,
+		&user.updated_at, &user.isActive, &user.lastLogin)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("[store.go] No user found with username: %s", username)
+			return nil, nil
+		}
+		log.Printf("[store.go] Error querying user by username: %v", err)
+		return nil, err
+	}
+	log.Printf("[store.go] User found: %+v", user)
+	return &user, nil
+}
+
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
 }

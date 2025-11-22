@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Maiar0/api-sqlite-base-go/server"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func Register(mux *http.ServeMux) {
@@ -12,6 +13,12 @@ func Register(mux *http.ServeMux) {
 	mux.HandleFunc("/auth/login", login)
 	mux.HandleFunc("/auth/register", register)
 }
+
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 func login(w http.ResponseWriter, r *http.Request) {
 	//is it post?
 	log.Printf("[login.go] login handler called")
@@ -19,6 +26,29 @@ func login(w http.ResponseWriter, r *http.Request) {
 		server.WriteJSONError(w, http.StatusBadRequest, "Bad Request")
 		return
 	}
+	var req loginRequest
+	if err := server.ReadRequestBody(w, r, &req); err != nil {
+		server.WriteJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+	log.Printf("[login.go] login request: %+v", req) //TODO:: remove dont read password in logs
+	//logic
+	db, err := GetUserStore()
+	if err != nil {
+		server.WriteJSONError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	user, err := db.GetUserByUsername(req.Username)
+	if err != nil {
+		server.WriteJSONError(w, http.StatusInternalServerError, "Error fetching user")
+		return
+	}
+	if user == nil || !CheckPasswordHash(req.Password, user.passwordHash) {
+		server.WriteJSONError(w, http.StatusUnauthorized, "Invalid username or password")
+		return
+	}
+	//response
+	server.WriteJSONResponse(w, http.StatusOK, map[string]string{"message": "Login successful"})
 
 }
 
@@ -57,4 +87,9 @@ func register(w http.ResponseWriter, r *http.Request) {
 	//response
 	server.WriteJSONResponse(w, http.StatusCreated, map[string]string{"message": "User created successfully"})
 
+}
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
