@@ -24,7 +24,7 @@ type Store struct {
 
 var userStore *Store
 
-func GetUserStore() (*Store, error) {
+func GetUserStore() (*Store, error) { //will initialize the store if not yet done
 	if userStore == nil {
 		log.Printf("[store.go] userStore == nil")
 		store, err := InitUserDB()
