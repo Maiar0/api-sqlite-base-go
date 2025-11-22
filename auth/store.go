@@ -28,9 +28,11 @@ func GetUserStore() (*Store, error) {
 	if userStore == nil {
 		err := InitUserDB()
 		if err != nil {
+			log.Printf("[store.go] Error getting user DB %e", err)
 			return nil, err
 		}
 	}
+
 	return userStore, nil
 }
 
@@ -40,6 +42,7 @@ func CloseUserDB() error {
 	}
 	err := userStore.db.Close()
 	userStore = nil
+	log.Printf("[store.go] User DB closed successfully")
 	return err
 }
 
