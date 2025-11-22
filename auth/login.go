@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func Register(mux *http.ServeMux) {
+func RegisterLoginPaths(mux *http.ServeMux) {
 	log.Printf("[login.go] Register login routes")
 	mux.HandleFunc("/auth/login", login)
 	mux.HandleFunc("/auth/register", register)
@@ -102,4 +102,15 @@ func register(w http.ResponseWriter, r *http.Request) {
 func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+func TestAuthorized(w http.ResponseWriter, r *http.Request) {
+	//is it get?
+	log.Printf("[login.go] testAuthorized handler called")
+	if r.Method != http.MethodGet {
+		server.WriteJSONError(w, http.StatusBadRequest, "Bad Request")
+		return
+	}
+
+	server.WriteJSONResponse(w, http.StatusOK, map[string]string{"data": "true"})
 }

@@ -17,13 +17,14 @@ func main() {
 	auth.InitJWTSecret()
 	//setup handles
 	mux := http.NewServeMux()
-	auth.Register(mux)
+	auth.RegisterLoginPaths(mux)
 
 	// Serve files inside ./tests/ under /tests/
 	fileServer := http.FileServer(http.Dir("./tests"))
 	mux.Handle("/tests/", http.StripPrefix("/tests/", fileServer))
 
 	mux.HandleFunc("/ws/echo", server.HandleEchoWS)
+	mux.Handle("/api/data", auth.WithJWT(auth.TestAuthorized))
 
 	server.Run(mux, ":3000")
 }

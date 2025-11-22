@@ -98,12 +98,14 @@
             <button type="submit" id="login-button">Login</button>
             <div id="message" class="message"></div>
         </form>
+        <button type="button" id="data-button" style="margin-top: 10px;">Get /api/data</button>
     </div>
 
     <script>
         const form = document.getElementById("login-form");
         const messageEl = document.getElementById("message");
         const button = document.getElementById("login-button");
+        const dataButton = document.getElementById("data-button");
 
         function setMessage(text, isError) {
             messageEl.textContent = text;
@@ -147,15 +149,57 @@
                     const token = data.token || data.accessToken || null;
                     if (token) {
                         localStorage.setItem("authToken", token);
-                        setMessage("Login successful.\nToken stored in localStorage.", false);
-                    } else {
-                        setMessage("Login successful, but no token in response.", false);
                     }
+                    setMessage("Login successful.", false);
                 }
             } catch (err) {
                 setMessage("Network error: " + err.message, true);
             } finally {
                 button.disabled = false;
+            }
+        });
+
+        dataButton.addEventListener("click", async () => {
+            setMessage("", false);
+            const token = localStorage.getItem("authToken");
+            if (!token) {
+                setMessage("No token in localStorage. Log in first.", true);
+                return;
+            }
+
+            dataButton.disabled = true;
+            try {
+                const resp = await fetch("/api/data", {
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Accept": "application/json"
+                    }
+                });
+
+                const text = await resp.text();
+                let data;
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (err) {
+                    data = {};
+                }
+
+                if (!resp.ok) {
+                    const errMsg = (data && data.error) || resp.statusText || "Request failed";
+                    setMessage("Error fetching /api/data: " + errMsg, true);
+                } else {
+                    const val = data.data;
+                    if (typeof val === "boolean") {
+                        setMessage("/api/data response: data=" + val, false);
+                    } else {
+                        setMessage("Unexpected /api/data response: " + text, true);
+                    }
+                }
+            } catch (err) {
+                setMessage("Network error: " + err.message, true);
+            } finally {
+                dataButton.disabled = false;
             }
         });
     </script>
