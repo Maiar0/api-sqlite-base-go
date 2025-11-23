@@ -13,9 +13,19 @@ import (
 )
 
 const (
-	baseDir    = "auth"
-	schemaPath = "auth/user.sql"
+	baseDir    = "store/auth"
 	dbFileName = "users.db"
+	userSchema = `CREATE TABLE IF NOT EXISTS users (
+	id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid          TEXT NOT NULL UNIQUE,
+    username      TEXT NOT NULL UNIQUE,
+    email         TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_active     BOOLEAN DEFAULT 1,
+    last_login_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
 )
 
 type Store struct {
@@ -64,16 +74,9 @@ func InitUserDB() (*Store, error) {
 		return nil, fmt.Errorf("opening db %q: %w", dbPath, err)
 	}
 
-	// If anything fails after this, close db before returning
-	schemaBytes, err := os.ReadFile(schemaPath)
-	if err != nil {
+	if _, err := db.Exec(userSchema); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("reading schema file %q: %w", schemaPath, err)
-	}
-
-	if _, err := db.Exec(string(schemaBytes)); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("executing schema from %q: %w", schemaPath, err)
+		return nil, fmt.Errorf("executing schema from userSchema: %w", err)
 	}
 
 	log.Printf("[store.go] User DB initialized successfully at %s", dbPath)
