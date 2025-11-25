@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # ====== CONFIGURABLE SETTINGS ======
-APP_NAME="api-sqlite-base-go"           # Go binary name
-APP_USER="ubuntu"                       # Linux user that will run the service
+APP_NAME="testApp"           # Go binary name
+APP_USER="test"                       # Linux user that will run the service
 APP_DIR="/opt/$APP_NAME"                # Install directory
 SERVICE_NAME="$APP_NAME.service"
 APP_PORT="3000"                         # Port your Go app listens on
@@ -34,6 +34,13 @@ fi
 cp "./$APP_NAME" "$APP_DIR/$APP_NAME"
 chmod +x "$APP_DIR/$APP_NAME"
 
+echo "==> Copying .env if present..."
+if [[ -f "./.env" ]]; then
+  cp "./.env" "$APP_DIR/.env"
+else
+  echo "WARNING: .env not found next to deploy.sh; service will start without it."
+fi
+
 echo "==> Setting ownership to $APP_USER..."
 chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
 
@@ -47,6 +54,7 @@ After=network.target
 Type=simple
 User=$APP_USER
 WorkingDirectory=$APP_DIR
+EnvironmentFile=$APP_DIR/.env
 ExecStart=$APP_DIR/$APP_NAME
 Restart=always
 RestartSec=5
@@ -64,7 +72,7 @@ echo "==> Checking service status (short)..."
 systemctl --no-pager --full status "$SERVICE_NAME" || true
 
 echo "==> Configuring Nginx reverse proxy..."
-NGINX_SITE="/etc/nginx/sites-available/api-sqlite-base-go"
+NGINX_SITE="/etc/nginx/sites-available/$APP_NAME"
 cat >"$NGINX_SITE" <<EOF
 server {
     listen 80;
@@ -95,7 +103,7 @@ echo "==> Deployment complete."
 echo
 echo "Summary:"
 echo "  - Binary installed in: $APP_DIR"
-echo "  - SQLite DB will be created in: $APP_DIR/auth/users.db"
+echo "  - SQLite DB will be created in: $APP_DIR/store/auth/users.db"
 echo "  - Systemd service: $SERVICE_NAME (user: $APP_USER)"
 echo "  - Nginx is proxying http://YOUR_SERVER_IP/ -> 127.0.0.1:$APP_PORT"
 echo
