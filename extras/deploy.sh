@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#chmod +x extras/deploy.sh
+#sudo extras/deploy.sh
 set -euo pipefail
 
 # ====== CONFIGURABLE SETTINGS ======
