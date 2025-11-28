@@ -8,7 +8,7 @@ import (
 
 type ctxKey string
 
-const UserClaimsKey ctxKey = "Claims"
+const UserClaimsKey ctxKey = "authUserClaims"
 
 func JWTMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(
