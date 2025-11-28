@@ -15,15 +15,16 @@ func main() {
 	loadDotEnv()
 	//setup
 	auth.InitJWTSecret()
-	//setup handles
+	//setup paths
 	mux := http.NewServeMux()
 	auth.RegisterLoginPaths(mux)
 
 	// Serve files inside ./tests/ under /tests/
 	fileServer := http.FileServer(http.Dir("./tests"))
 	mux.Handle("/tests/", http.StripPrefix("/tests/", fileServer))
-
-	mux.HandleFunc("/ws/echo", server.HandleEchoWS)
+	//web socket endpoint
+	mux.Handle("/ws/echo", auth.WithJWT(server.HandleEchoWS))
+	//test auithorized login endpoint
 	mux.Handle("/api/data", auth.WithJWT(auth.TestAuthorized))
 
 	server.Run(mux, ":3000")
@@ -31,6 +32,7 @@ func main() {
 
 // loadDotEnv loads key=value pairs from a local .env file so JWT_SECRET is
 // available during local development without exporting it manually.
+// i didnt write this and idk what it does exactly
 func loadDotEnv() {
 	f, err := os.Open(".env")
 	if err != nil {

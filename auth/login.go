@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Maiar0/api-sqlite-base-go/server"
+	"github.com/Maiar0/api-sqlite-base-go/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -28,37 +28,37 @@ func login(w http.ResponseWriter, r *http.Request) {
 	//is it post?
 	log.Printf("[login.go] login handler called")
 	if r.Method != http.MethodPost {
-		server.WriteJSONError(w, http.StatusBadRequest, "Bad Request")
+		utils.WriteJSONError(w, http.StatusBadRequest, "Bad Request")
 		return
 	}
 	var req loginRequest
-	if err := server.ReadRequestBody(w, r, &req); err != nil {
-		server.WriteJSONError(w, http.StatusBadRequest, "Invalid request body")
+	if err := utils.ReadRequestBody(w, r, &req); err != nil {
+		utils.WriteJSONError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 	log.Printf("[login.go] login request: %+v", req) //TODO:: remove dont read password in logs
 	//logic
 	db, err := GetUserStore()
 	if err != nil {
-		server.WriteJSONError(w, http.StatusInternalServerError, "Database error")
+		utils.WriteJSONError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	user, err := db.GetUserByUsername(req.Username)
 	if err != nil {
-		server.WriteJSONError(w, http.StatusInternalServerError, "Error fetching user")
+		utils.WriteJSONError(w, http.StatusInternalServerError, "Error fetching user")
 		return
 	}
 	if user == nil || !CheckPasswordHash(req.Password, user.passwordHash) {
-		server.WriteJSONError(w, http.StatusUnauthorized, "Invalid username or password")
+		utils.WriteJSONError(w, http.StatusUnauthorized, "Invalid username or password")
 		return
 	}
 	//response
 	token, err := GenerateJWT(user.uuid, user.username, user.email, 24*time.Hour)
 	if err != nil {
-		server.WriteJSONError(w, http.StatusInternalServerError, "Error generating token")
+		utils.WriteJSONError(w, http.StatusInternalServerError, "Error generating token")
 		return
 	}
-	server.WriteJSONResponse(w, http.StatusCreated, loginResponse{TokenStr: token, Message: "Login successful"})
+	utils.WriteJSONResponse(w, http.StatusCreated, loginResponse{TokenStr: token, Message: "Login successful"})
 
 }
 
@@ -72,30 +72,30 @@ func register(w http.ResponseWriter, r *http.Request) {
 	//is it post?
 	log.Printf("[login.go] register handler called")
 	if r.Method != http.MethodPost {
-		server.WriteJSONError(w, http.StatusBadRequest, "Bad Request")
+		utils.WriteJSONError(w, http.StatusBadRequest, "Bad Request")
 		return
 	}
 	//read body into struct
 	var req registerRequest
-	if err := server.ReadRequestBody(w, r, &req); err != nil {
-		server.WriteJSONError(w, http.StatusBadRequest, "Invalid request body")
+	if err := utils.ReadRequestBody(w, r, &req); err != nil {
+		utils.WriteJSONError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 	log.Printf("[login.go] register request: %+v", req) //TODO:: remove dont read password in logs
 	//logic
 	db, err := GetUserStore()
 	if err != nil {
-		server.WriteJSONError(w, http.StatusInternalServerError, "Database error")
+		utils.WriteJSONError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	result, err := db.NewUser(req.Username, req.Email, req.Password)
 	if err != nil {
-		server.WriteJSONError(w, http.StatusInternalServerError, "Error creating user")
+		utils.WriteJSONError(w, http.StatusInternalServerError, "Error creating user")
 		return
 	}
 	log.Printf("[login.go] User created with result: %+v", result)
 	//response
-	server.WriteJSONResponse(w, http.StatusCreated, map[string]string{"message": "User created successfully"})
+	utils.WriteJSONResponse(w, http.StatusCreated, map[string]string{"message": "User created successfully"})
 
 }
 
@@ -108,9 +108,9 @@ func TestAuthorized(w http.ResponseWriter, r *http.Request) {
 	//is it get?
 	log.Printf("[login.go] testAuthorized handler called")
 	if r.Method != http.MethodGet {
-		server.WriteJSONError(w, http.StatusBadRequest, "Bad Request")
+		utils.WriteJSONError(w, http.StatusBadRequest, "Bad Request")
 		return
 	}
 
-	server.WriteJSONResponse(w, http.StatusOK, map[string]string{"data": "true"})
+	utils.WriteJSONResponse(w, http.StatusOK, map[string]string{"data": "true"})
 }

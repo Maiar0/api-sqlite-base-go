@@ -38,3 +38,10 @@ func JWTMiddleware(next http.Handler) http.Handler {
 func WithJWT(h http.HandlerFunc) http.Handler {
 	return JWTMiddleware(h)
 }
+
+// returns Claims from context stored by JWTMiddleware
+// ok == false if none found
+func ClaimsFromContext(ctx context.Context) (*Claims, bool) {
+	claims, ok := ctx.Value(UserClaimsKey).(*Claims)
+	return claims, ok
+}
