@@ -1,5 +1,7 @@
 package server
 
+//THIS IS STILL A MESS DONT JUDGE ME
+//This doesnt handle user authentication correctly becuase WS dont support http headers after the initial handshake
 import (
 	"encoding/json"
 	"log"
@@ -84,10 +86,12 @@ func HandleEchoWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("[WS] Upgrade error: %v", err)
+		http.Error(w, "WebSocket upgrade failed", http.StatusBadRequest)
+		return
 	}
 	log.Printf("[WS] client %s conected from %s", userUUID, r.RemoteAddr)
 	//create client and store
-	client := &Client{
+	client := &Client{ //having only one UUID and no Connection ID only supports one connection per user
 		ID:   userUUID,
 		Conn: conn,
 	}

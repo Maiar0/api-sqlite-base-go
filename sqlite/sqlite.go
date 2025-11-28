@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	_ "modernc.org/sqlite" // Registers the SQLite driver with database/sql
+	_ "modernc.org/sqlite" //TODO:: Registers the SQLite driver with database/sql Switch to github.com/mattn/go-sqlite3 possibly?
 )
 
 // Store represents a base directory where game DB files are stored.

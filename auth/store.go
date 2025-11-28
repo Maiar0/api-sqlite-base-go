@@ -34,7 +34,7 @@ type Store struct {
 
 var userStore *Store
 
-func GetUserStore() (*Store, error) { //will initialize the store if not yet done
+func GetUserStore() (*Store, error) { //This can create a data race if called concurrently
 	if userStore == nil {
 		log.Printf("[store.go] userStore == nil")
 		store, err := InitUserDB()
@@ -58,7 +58,7 @@ func CloseUserDB() error {
 	return err
 }
 
-func InitUserDB() (*Store, error) {
+func InitUserDB() (*Store, error) { //TODO:: This creates a DB file shouldnt really do that in production
 	// Ensure baseDir exists
 	if err := os.MkdirAll(baseDir, 0755); err != nil {
 		log.Printf("[store.go] Error creating base dir: %q", err.Error())

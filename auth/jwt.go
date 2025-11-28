@@ -14,7 +14,7 @@ var jwtSecret []byte
 func InitJWTSecret() { //must be instillized at app start
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		panic("[jwt.go] JWT_SECRET environment variable not set")
+		panic("[jwt.go] JWT_SECRET environment variable not set") //TODO:: This panics should it?
 	}
 	jwtSecret = []byte(secret)
 }

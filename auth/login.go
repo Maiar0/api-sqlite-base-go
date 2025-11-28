@@ -36,7 +36,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		utils.WriteJSONError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	log.Printf("[login.go] login request: %+v", req) //TODO:: remove dont read password in logs
+	log.Printf("[login.go] login request: %+v", req.Username) //TODO:: remove dont read password in logs
 	//logic
 	db, err := GetUserStore()
 	if err != nil {
@@ -58,7 +58,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		utils.WriteJSONError(w, http.StatusInternalServerError, "Error generating token")
 		return
 	}
-	utils.WriteJSONResponse(w, http.StatusCreated, loginResponse{TokenStr: token, Message: "Login successful"})
+	utils.WriteJSONResponse(w, http.StatusOK, loginResponse{TokenStr: token, Message: "Login successful"})
 
 }
 
